@@ -39,7 +39,7 @@ class Bot2(object):
 
     def move(self, player, game):
         if self.move_x == -1:
-            (distance, what) = game.peek (player, 7)
+            (distance, what) = game.peek (player, player.direction)
             if what == "|" and distance == 0:
                 if player.direction == RIGHT:
                     self.move_x = player.x
