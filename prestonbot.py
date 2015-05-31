@@ -22,7 +22,7 @@ class Bot(object):
         if what_left == "$":
             return LEFT
         if what == "|" and distance == 0:
-            if player.x == 0:
+            if player.position.x == 0:
                 return RIGHT
             return game.get_random_direction_that_isnt(player.direction)
         else:
@@ -30,41 +30,36 @@ class Bot(object):
 class Bot2(object):
     def __init__(self, character):
         self.character = character
-        self.move_x = 0
-        self.move_y = 0
-        self.move_direction = RIGHT
+        self.move_target = GameObject("Move", Point(0,0), RIGHT, MOVE)
         
     def get_character(self):
         return self.character
 
     def move(self, player, game):
-        if self.move_x == -1:
+        if self.move_target:
+            #we are trying to go to a point in space
+            if player.position == self.move_target.position:
+                direction = self.move_target.direction
+                self.move_target = None
+                return direction
+            vector = player.position - self.move_target.position
+            if vector.x > 0:
+                return LEFT
+            if vector.x < 0:
+                return RIGHT
+            if vector.y > 0:
+                return UP
+            if vector.y < 0:
+                return DOWN
+        else:
             (distance, what) = game.peek (player, player.direction)
             if what == "|" and distance == 0:
                 if player.direction == RIGHT:
-                    self.move_x = player.x
-                    self.move_y = player.y + 1
-                    self.move_direction = LEFT
+                    self.move_target = GameObject("move", player.position.copy(), LEFT, MOVE)
+                    self.move_target.position.y += 1
                     return DOWN
                 if player.direction == LEFT:
-                    self.move_x = player.x
-                    self.move_y = player.y + 1
-                    self.move_direction = RIGHT
+                    self.move_target = GameObject("move", player.position.copy(), RIGHT, MOVE)
+                    self.move_target.position.y += 1
                     return DOWN
-                
-        else:
-            #we are trying to go to a point in space
-            if player.x == self.move_x and player.y == self.move_y:
-                self.move_x = -1
-                return self.move_direction
-            if player.x > self.move_x:
-                return LEFT
-            if player.x < self.move_x:
-                return RIGHT
-            if player.y > self.move_y:
-                return UP
-            if player.y < self.move_y:
-                return DOWN
-                
-        
         return player.direction

@@ -12,6 +12,67 @@ UP      = 0
 DOWN    = 1
 LEFT    = 2
 RIGHT   = 3
+NONE    = 4
+
+MOVE    = 0 # A target to move to
+WALL    = 1
+PLAYER  = 2
+PRIZE   = 3
+ENEMY   = 4
+
+class Point(object):
+    def __init__(self, x=0, y=0):
+        self.x = x
+        self.y = y
+    
+    def is_zero(self):
+        return self.x == 0 and self.y == 0
+
+    def copy(self):
+        return Point(self.x, self.y)
+
+    def __str__(self):
+        return "(%u, %u)" % (self.x, self.y)
+
+    def __repr__(self):
+        return "%s%s" % (self.__class__.__name__, str(self))
+
+    def __eq__(self, rhs):
+        return self.x == rhs.x and self.y == rhs.y
+
+    def __ne__(self, rhs):
+        return self.x != rhs.x or self.y != rhs.y
+
+    def __add__(self, rhs):
+        return Point(self.x + rhs.x, self.y + rhs.y)
+    
+    def __sub__(self, rhs):
+        return Point(self.x - rhs.x, self.y - rhs.y)
+
+class GameObject(object):
+
+    @classmethod
+    def TypeToString(cls, type):
+        if type == MOVE:
+            return 'move-target'
+        if type == WALL:
+            return 'wall'
+        if type == PLAYER:
+            return 'player'
+        if type == PRIZE:
+            return 'prize'
+        if type == ENEMY:
+            return 'enemy'
+
+    def __init__(self, name, position, direction, type):
+        self.position = position
+        self.direction = direction
+        self.visible = True
+        self.name = name
+        self.type = type
+
+    def __str__(self):
+        return "%s: position = %s, direction = %u, type = %s" % (self.name, self.position, self.direction, GameObject.TypeToString(self.type))
 
 class Bot(object):
     def __init__(self, character):
@@ -29,47 +90,37 @@ class Bot(object):
         else:
             return player.direction
 
-class Prize(object):
-    def __init__(self, x, y, character, points):
-        self.x = x
-        self.y = y
-        self.character = character
+class Prize(GameObject):
+    def __init__(self, name, position, direction, points):
+        GameObject.__init__(self, name, position, direction, PRIZE)
         self.points = points
         
-    def __str__(self):
-        return 'Prize: %c (%3u, %3u)' % (self.get_character(), self.x, self.y)
-    
     def get_character(self):
-        return self.character
+        return self.name
 
-class Player(object):
-    def __init__(self, bot, x, y, direction):
+class Player(GameObject):
+    def __init__(self, bot, position, direction):
+        GameObject.__init__(self, bot.get_character(), position, direction, PLAYER)
         self.bot = bot
-        self.x = x
-        self.y = y
-        self.direction = direction
         self.score = 0
-    
-    def __str__(self):
-        return 'Player: %c (%3u, %3u) direction = %u' % (self.get_character(), self.x, self.y, self.direction)
-        
+            
     def get_character(self):
         return self.bot.get_character()
     
     def move(self, game):
         self.direction = self.bot.move(self, game)
         if self.direction == UP:
-            if self.y > 0:
-                self.y -= 1
+            if self.position.y > 0:
+                self.position.y -= 1
         elif self.direction == DOWN:
-            if self.y + 1 < game.height:
-                self.y += 1
+            if self.position.y + 1 < game.height:
+                self.position.y += 1
         elif self.direction == LEFT:
-            if self.x > 0:
-                self.x -= 1
+            if self.position.x > 0:
+                self.position.x -= 1
         elif self.direction == RIGHT:
-            if self.x + 1 < game.width:
-                self.x += 1
+            if self.position.x + 1 < game.width:
+                self.position.x += 1
         
 class Game(object):
     def __init__(self, window, num_prizes):
@@ -79,15 +130,13 @@ class Game(object):
         self.players = list()
         self.prizes = list()
         for i in range(num_prizes):
-            self.prizes.append(Prize(randint(1,self.width-1), randint(1,self.height-1), "$", 5))
-        # self.prizes.append(Prize(10, 10, "$", 5))
-        # self.prizes.append(Prize(20, 20, "$", 5))
-        # self.prizes.append(Prize(30, 30, "$", 5))
-        # self.prizes.append(Prize(40, 40, "$", 5))
+            self.prizes.append(Prize("$", self.create_random_point(), NONE, 5))
 
-    
+    def create_random_point(self):
+        return Point(randint(0,self.width-1), randint(0,self.height-1))
+
     def add_player(self, bot):
-        self.players.append(Player(bot, randint(1,self.width-1), randint(1,self.height-1), self.get_random_direction()))
+        self.players.append(Player(bot, self.create_random_point(), self.get_random_direction()))
 
     def get_random_direction_that_isnt(self, direction):
         while 1:
@@ -104,36 +153,36 @@ class Game(object):
         nearest_prize = None
         if direction == UP:
             for prize in self.prizes:
-                if prize.x == player.x and prize.y < player.y:
-                    distance = player.y - prize.y
+                if prize.position == player.position:
+                    distance = player.position.y - prize.position.y
                     if distance < prize_distance:
                         nearest_prize = prize
                         prize_distance = distance
-            distance_to_wall = player.y
+            distance_to_wall = player.position.y
         elif direction == DOWN:
             for prize in self.prizes:
-                if prize.x == player.x and prize.y > player.y:
-                    distance =  prize.y - player.y
+                if prize.position.x == player.position.x and prize.position.y > player.position.y:
+                    distance =  prize.position.y - player.position.y
                     if distance < prize_distance:
                         nearest_prize = prize
                         prize_distance = distance
-            distance_to_wall = self.height - player.y - 1
+            distance_to_wall = self.height - player.position.y - 1
         elif direction == LEFT:
             for prize in self.prizes:
-                if prize.y == player.y and prize.x < player.x:
-                    distance = player.x - prize.x
+                if prize.position.y == player.position.y and prize.position.x < player.position.x:
+                    distance = player.position.x - prize.position.x
                     if distance < prize_distance:
                         nearest_prize = prize
                         prize_distance = distance
-            distance_to_wall = player.x
+            distance_to_wall = player.position.x
         elif direction == RIGHT:
             for prize in self.prizes:
-                if prize.y == player.y and prize.x > player.x:
-                    distance = prize.x - player.x
+                if prize.position.y == player.position.y and prize.position.x > player.position.x:
+                    distance = prize.position.x - player.position.x
                     if distance < prize_distance:
                         nearest_prize = prize
                         prize_distance = distance
-            distance_to_wall = self.width - player.x - 1
+            distance_to_wall = self.width - player.position.x - 1
         else:
             raise ValueError
         if prize_distance < distance_to_wall:
@@ -155,7 +204,7 @@ class Game(object):
         for player in self.players:
             player.move(self)
             for prize in self.prizes:
-                if player.x == prize.x and player.y == prize.y:
+                if player.position.x == prize.position.x and player.position.y == prize.position.y:
                     player.score += prize.points
                     remove_prizes.append(prize)
         for remove_prize in remove_prizes:
@@ -165,12 +214,12 @@ class Game(object):
             player_char = player.get_character()
             self.window.addstr(idx, 1, "%s score: %u" % (player_char, player.score))
             try:
-                self.window.addch(player.y, player.x, player_char)
+                self.window.addch(player.position.y, player.position.x, player_char)
             except:
                 pass # exception will be thrown if you try to addch at y = height -1 and x = width - 1...
                 
         for prize in self.prizes:
-            self.window.addch(prize.y, prize.x, prize.get_character())
+            self.window.addch(prize.position.y, prize.position.x, prize.get_character())
 
 def main(s):    
 
@@ -189,7 +238,7 @@ def main(s):
     while key != 27:                                                   # While Esc key is not pressed
         window.erase()
         game.update()
-        window.move(0,0)
+        window.move(0,0) # set the cursor to 0,0 since we can't hide the cursor...
         curses.doupdate()
         prevKey = key                                                  # Previous key pressed
         event = window.getch()
@@ -218,3 +267,4 @@ def main(s):
         
 if __name__ == '__main__':
     curses.wrapper(main)
+        
