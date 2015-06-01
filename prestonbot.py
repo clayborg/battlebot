@@ -30,13 +30,18 @@ class Bot(object):
 class Bot2(object):
     def __init__(self, character):
         self.character = character
-        self.move_targets = list()
-        target = GameObject("Move", Point(0,7), RIGHT, MOVE)
-        self.move_targets.append(target)
+        self.first = True
     def get_character(self):
         return self.character
 
     def move(self, player, game):
+        if self.first:
+            # Initialize stuff on our first move
+            self.first = False
+            self.move_targets = list()
+            target = GameObject("Move", Point(0,game.visibility-1), RIGHT, MOVE)
+            self.move_targets.append(target)
+
         (distance_up, what_up) = game.peek (player, UP)
         (distance_down, what_down) = game.peek (player, DOWN)
         if what_up == "$":

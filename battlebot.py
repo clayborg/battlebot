@@ -157,7 +157,7 @@ class Game(object):
         nearest_prize = None
         if direction == UP:
             for prize in self.prizes:
-                if prize.position == player.position:
+                if prize.position.x == player.position.x and prize.position.y < player.position.y:
                     distance = player.position.y - prize.position.y
                     if distance < prize_distance:
                         nearest_prize = prize
@@ -210,7 +210,8 @@ class Game(object):
             for prize in self.prizes:
                 if player.position.x == prize.position.x and player.position.y == prize.position.y:
                     player.score += prize.points
-                    remove_prizes.append(prize)
+                    if not prize in remove_prizes:
+                        remove_prizes.append(prize)
         for remove_prize in remove_prizes:
             self.prizes.remove(remove_prize)
         # Paint the players
