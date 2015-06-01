@@ -74,14 +74,46 @@ class GameObject(object):
     def __str__(self):
         return "%s: position = %s, direction = %u, type = %s" % (self.name, self.position, self.direction, GameObject.TypeToString(self.type))
 
-class Bot(object):
+class BaseBot(object):
     def __init__(self, character):
         self.character = character
+        self.targets = list()
 
+    def push_move_target(self, pt, direction):
+        self.targets.append(GameObject("move", pt.copy(), direction, MOVE))
+        
     def get_character(self):
         return self.character
 
+    def get_move_targets(self):
+        return self.targets
+
+    def move_using_targets(self, player, game):
+        '''Move using the "self.targets" if we have any. Returns NONE 
+           as the direction if the move wasn't handled. Returns a valid
+           direction if the move was handled.'''
+        if self.targets:
+            move_target = self.targets[-1]
+            #we are trying to go to a point in space
+            if player.position == move_target.position:
+                direction = move_target.direction
+                self.targets.pop()
+                return move_target.direction
+            vector = player.position - move_target.position
+            if vector.x > 0:
+                return LEFT
+            if vector.x < 0:
+                return RIGHT
+            if vector.y > 0:
+                return UP
+            if vector.y < 0:
+                return DOWN
+        return NONE
+        
     def move(self, player, game):
+        target_direction = self.move_using_targets(player, game)
+        if target_direction != NONE:
+            return target_direction
         (distance, what) = game.peek (player, player.direction)
         if debug:
             game.window.addstr(1, 1, "%s, game (width = %u, height = %u), peek -> distance = %u, what = %s" % (str(player), game.width, game.height, distance, what))

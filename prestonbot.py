@@ -27,66 +27,47 @@ class Bot(object):
             return game.get_random_direction_that_isnt(player.direction)
         else:
             return player.direction 
-class Bot2(object):
+class Bot2(BaseBot):
     def __init__(self, character):
-        self.character = character
+        BaseBot.__init__(self, character)
         self.first = True
-    def get_character(self):
-        return self.character
 
     def move(self, player, game):
         if self.first:
             # Initialize stuff on our first move
             self.first = False
-            self.move_targets = list()
-            target = GameObject("Move", Point(0,game.visibility-1), RIGHT, MOVE)
-            self.move_targets.append(target)
+            self.push_move_target (Point(0,game.visibility-1), RIGHT)
 
         (distance_up, what_up) = game.peek (player, UP)
         (distance_down, what_down) = game.peek (player, DOWN)
         if what_up == "$":
+            move_targets = self.get_move_targets()
             prize_position = player.position.copy()
             prize_position.y -= distance_up
-            if len( self.move_targets) == 0 or self.move_targets[-1].position != prize_position: 
-                self.move_targets.append(GameObject("return", player.position.copy(), player.direction, MOVE))
-                move_target = GameObject("return", prize_position, DOWN, MOVE)
-                self.move_targets.append(move_target)
+            if len(move_targets) == 0 or move_targets[-1].position != prize_position: 
+                self.push_move_target (player.position, player.direction)                
+                self.push_move_target (prize_position, DOWN)                
                 return UP
         if what_down == "$":
+            move_targets = self.get_move_targets()
             prize_position = player.position.copy()
             prize_position.y += distance_down
-            if len( self.move_targets) == 0 or self.move_targets[-1].position != prize_position: 
-                self.move_targets.append(GameObject("return", player.position.copy(), player.direction, MOVE))
-                move_target = GameObject("return", prize_position, UP, MOVE)
-                self.move_targets.append(move_target)
+            if len(move_targets) == 0 or move_targets[-1].position != prize_position: 
+                self.push_move_target (player.position, player.direction)                
+                self.push_move_target (prize_position, UP)                
                 return DOWN
-        if self.move_targets:
-            move_target = self.move_targets[-1]
-            #we are trying to go to a point in space
-            if player.position == move_target.position:
-                direction = move_target.direction
-                self.move_targets.pop()
-                return move_target.direction
-            vector = player.position - move_target.position
-            if vector.x > 0:
-                return LEFT
-            if vector.x < 0:
-                return RIGHT
-            if vector.y > 0:
-                return UP
-            if vector.y < 0:
-                return DOWN
+        target_direction = self.move_using_targets(player, game)
+        if target_direction != NONE:
+            return target_direction
         else:
             (distance, what) = game.peek (player, player.direction)
             if what == "|" and distance == 0:
+                move_destination = player.position.copy()
+                move_destination.y += game.visibility * 2
                 if player.direction == RIGHT:
-                    move_target = GameObject("move", player.position.copy(), LEFT, MOVE)
-                    move_target.position.y += game.visibility * 2
-                    self.move_targets.append(move_target)
+                    self.push_move_target (move_destination, LEFT)
                     return DOWN
                 if player.direction == LEFT:
-                    move_target = GameObject("move", player.position.copy(), RIGHT, MOVE)
-                    move_target.position.y += game.visibility * 2
-                    self.move_targets.append(move_target)
+                    self.push_move_target (move_destination, RIGHT)
                     return DOWN
         return player.direction
