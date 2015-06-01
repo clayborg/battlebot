@@ -31,12 +31,30 @@ class Bot2(object):
     def __init__(self, character):
         self.character = character
         self.move_targets = list()
-        target = GameObject("Move", Point(0,0), RIGHT, MOVE)
+        target = GameObject("Move", Point(0,7), RIGHT, MOVE)
         self.move_targets.append(target)
     def get_character(self):
         return self.character
 
     def move(self, player, game):
+        (distance_up, what_up) = game.peek (player, UP)
+        (distance_down, what_down) = game.peek (player, DOWN)
+        if what_up == "$":
+            prize_position = player.position.copy()
+            prize_position.y -= distance_up
+            if len( self.move_targets) == 0 or self.move_targets[-1].position != prize_position: 
+                self.move_targets.append(GameObject("return", player.position.copy(), player.direction, MOVE))
+                move_target = GameObject("return", prize_position, DOWN, MOVE)
+                self.move_targets.append(move_target)
+                return UP
+        if what_down == "$":
+            prize_position = player.position.copy()
+            prize_position.y += distance_down
+            if len( self.move_targets) == 0 or self.move_targets[-1].position != prize_position: 
+                self.move_targets.append(GameObject("return", player.position.copy(), player.direction, MOVE))
+                move_target = GameObject("return", prize_position, UP, MOVE)
+                self.move_targets.append(move_target)
+                return DOWN
         if self.move_targets:
             move_target = self.move_targets[-1]
             #we are trying to go to a point in space
@@ -58,12 +76,12 @@ class Bot2(object):
             if what == "|" and distance == 0:
                 if player.direction == RIGHT:
                     move_target = GameObject("move", player.position.copy(), LEFT, MOVE)
-                    move_target.position.y += 1
+                    move_target.position.y += game.visibility * 2
                     self.move_targets.append(move_target)
                     return DOWN
                 if player.direction == LEFT:
                     move_target = GameObject("move", player.position.copy(), RIGHT, MOVE)
-                    move_target.position.y += 1
+                    move_target.position.y += game.visibility * 2
                     self.move_targets.append(move_target)
                     return DOWN
         return player.direction
