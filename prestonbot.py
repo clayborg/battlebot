@@ -30,19 +30,21 @@ class Bot(object):
 class Bot2(object):
     def __init__(self, character):
         self.character = character
-        self.move_target = GameObject("Move", Point(0,0), RIGHT, MOVE)
-        
+        self.move_targets = list()
+        target = GameObject("Move", Point(0,0), RIGHT, MOVE)
+        self.move_targets.append(target)
     def get_character(self):
         return self.character
 
     def move(self, player, game):
-        if self.move_target:
+        if self.move_targets:
+            move_target = self.move_targets[-1]
             #we are trying to go to a point in space
-            if player.position == self.move_target.position:
-                direction = self.move_target.direction
-                self.move_target = None
-                return direction
-            vector = player.position - self.move_target.position
+            if player.position == move_target.position:
+                direction = move_target.direction
+                self.move_targets.pop()
+                return move_target.direction
+            vector = player.position - move_target.position
             if vector.x > 0:
                 return LEFT
             if vector.x < 0:
@@ -55,11 +57,13 @@ class Bot2(object):
             (distance, what) = game.peek (player, player.direction)
             if what == "|" and distance == 0:
                 if player.direction == RIGHT:
-                    self.move_target = GameObject("move", player.position.copy(), LEFT, MOVE)
-                    self.move_target.position.y += 1
+                    move_target = GameObject("move", player.position.copy(), LEFT, MOVE)
+                    move_target.position.y += 1
+                    self.move_targets.append(move_target)
                     return DOWN
                 if player.direction == LEFT:
-                    self.move_target = GameObject("move", player.position.copy(), RIGHT, MOVE)
-                    self.move_target.position.y += 1
+                    move_target = GameObject("move", player.position.copy(), RIGHT, MOVE)
+                    move_target.position.y += 1
+                    self.move_targets.append(move_target)
                     return DOWN
         return player.direction

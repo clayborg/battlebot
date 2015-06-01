@@ -1,2 +1,2 @@
 # battlebot
-Playing with Pyton with curses to create bots that can win a simple game.
+Playing with Python with curses to create bots that can win a simple game.

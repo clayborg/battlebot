@@ -131,7 +131,11 @@ class Game(object):
         self.prizes = list()
         for i in range(num_prizes):
             self.prizes.append(Prize("$", self.create_random_point(), NONE, 5))
-
+    def finished(self):
+        if self.prizes:
+            return False
+        else:
+            return True
     def create_random_point(self):
         return Point(randint(0,self.width-1), randint(0,self.height-1))
 
@@ -238,13 +242,15 @@ def main(s):
     while key != 27:                                                   # While Esc key is not pressed
         window.erase()
         game.update()
+        if game.finished():
+            break
         window.move(0,0) # set the cursor to 0,0 since we can't hide the cursor...
         curses.doupdate()
         prevKey = key                                                  # Previous key pressed
         event = window.getch()
         key = key if event == -1 else event 
 
-
+    
         if key == ord(' '):                                            # If SPACE BAR is pressed, wait for another
             key = -1                                                   # one (Pause/Resume)
             while key != ord(' '):
