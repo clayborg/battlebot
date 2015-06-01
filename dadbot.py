@@ -10,21 +10,29 @@ class Bot(object):
         return self.character
 
     def move(self, player, game):
-        (distance_up, what_up) = game.peek (player, battlebot.UP)
-        (distance_down, what_down) = game.peek (player, battlebot.DOWN)
-        (distance_left, what_left) = game.peek (player, battlebot.LEFT)
-        (distance_right, what_right) = game.peek (player, battlebot.RIGHT)
-        if what_up == "$":
-            return battlebot.UP
-        if what_down == "$":
-            return battlebot.DOWN
-        if what_right == "$":
-            return  battlebot.RIGHT
-        if what_left == "$":
-            return battlebot.LEFT
+        game_object_up    = game.peek (player, battlebot.UP)
+        game_object_down  = game.peek (player, battlebot.DOWN)
+        game_object_left  = game.peek (player, battlebot.LEFT)
+        game_object_right = game.peek (player, battlebot.RIGHT)
+        game_object       = None
+        if game_object_up:
+            game_object = game_object_up
+            if game_object_up.type == battlebot.PRIZE:
+                return battlebot.UP
+        if game_object_down:
+            game_object = game_object_down
+            if game_object_down.type == battlebot.PRIZE:
+                return battlebot.DOWN
+        if game_object_right:
+            game_object = game_object_right
+            if game_object_right.type == battlebot.PRIZE:
+                return  battlebot.RIGHT
+        if game_object_left:
+            game_object = game_object_left
+            if game_object_left.type == battlebot.PRIZE:
+                return battlebot.LEFT
 
-        (distance, what) = game.peek (player, player.direction)
-        if what == "|" and distance == 0:
+        if player.will_hit_wall(game_object):
             self.count = 0;
             return game.get_random_direction_that_isnt(player.direction)
         else:

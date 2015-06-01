@@ -24,7 +24,7 @@ class Point(object):
     def __init__(self, x=0, y=0):
         self.x = x
         self.y = y
-    
+
     def is_zero(self):
         return self.x == 0 and self.y == 0
 
@@ -45,7 +45,7 @@ class Point(object):
 
     def __add__(self, rhs):
         return Point(self.x + rhs.x, self.y + rhs.y)
-    
+
     def __sub__(self, rhs):
         return Point(self.x - rhs.x, self.y - rhs.y)
 
@@ -74,6 +74,25 @@ class GameObject(object):
     def __str__(self):
         return "%s: position = %s, direction = %u, type = %s" % (self.name, self.position, self.direction, GameObject.TypeToString(self.type))
 
+    def distance_to_game_object_in_direction(self, game_object, direction):
+        if direction == UP:
+            return self.position.y - game_object.position.y
+        elif direction == DOWN:
+            return game_object.position.y - self.position.y
+        elif direction == LEFT:
+            return self.position.x - game_object.position.x
+        elif direction == RIGHT:
+            return game_object.position.x - self.position.x
+        else:
+            raise ValueError
+            return 0
+
+    def will_hit_wall(self, game_object):
+        if game_object and game_object.type == WALL and self.distance_to_game_object_in_direction(game_object, self.direction) == 1:
+            return True
+        else:
+            return False
+
 class BaseBot(object):
     def __init__(self, character):
         self.character = character
@@ -81,7 +100,7 @@ class BaseBot(object):
 
     def push_move_target(self, pt, direction):
         self.targets.append(GameObject("move", pt.copy(), direction, MOVE))
-        
+
     def get_character(self):
         return self.character
 
@@ -89,7 +108,7 @@ class BaseBot(object):
         return self.targets
 
     def move_using_targets(self, player, game):
-        '''Move using the "self.targets" if we have any. Returns NONE 
+        '''Move using the "self.targets" if we have any. Returns NONE
            as the direction if the move wasn't handled. Returns a valid
            direction if the move was handled.'''
         if self.targets:
@@ -109,15 +128,15 @@ class BaseBot(object):
             if vector.y < 0:
                 return DOWN
         return NONE
-        
+
     def move(self, player, game):
         target_direction = self.move_using_targets(player, game)
         if target_direction != NONE:
             return target_direction
-        (distance, what) = game.peek (player, player.direction)
+        game_object = game.peek (player, player.direction)
         if debug:
             game.window.addstr(1, 1, "%s, game (width = %u, height = %u), peek -> distance = %u, what = %s" % (str(player), game.width, game.height, distance, what))
-        if what == "|" and distance == 0:
+        if player.will_hit_wall(game_object):
             return game.get_random_direction_that_isnt(player.direction)
         else:
             return player.direction
@@ -126,7 +145,7 @@ class Prize(GameObject):
     def __init__(self, name, position, direction, points):
         GameObject.__init__(self, name, position, direction, PRIZE)
         self.points = points
-        
+
     def get_character(self):
         return self.name
 
@@ -135,12 +154,15 @@ class Player(GameObject):
         GameObject.__init__(self, bot.get_character(), position, direction, PLAYER)
         self.bot = bot
         self.score = 0
-            
+
     def get_character(self):
         return self.bot.get_character()
-    
-    def move(self, game):
-        self.direction = self.bot.move(self, game)
+
+    def move(self, game, force_direction):
+        if force_direction == NONE:
+            self.direction = self.bot.move(self, game)
+        else:
+            self.direction = force_direction
         if self.direction == UP:
             if self.position.y > 0:
                 self.position.y -= 1
@@ -153,7 +175,7 @@ class Player(GameObject):
         elif self.direction == RIGHT:
             if self.position.x + 1 < game.width:
                 self.position.x += 1
-        
+
 class Game(object):
     def __init__(self, window, num_prizes):
         self.window = window
@@ -163,11 +185,17 @@ class Game(object):
         self.prizes = list()
         for i in range(num_prizes):
             self.prizes.append(Prize("$", self.create_random_point(), NONE, 5))
+
     def finished(self):
         if self.prizes:
-            return False
+            return None
         else:
-            return True
+            winner = None
+            for player in self.players:
+                if winner is None or winner.score < player.score:
+                    winner = player
+            return winner
+
     def create_random_point(self):
         return Point(randint(0,self.width-1), randint(0,self.height-1))
 
@@ -182,7 +210,7 @@ class Game(object):
 
     def get_random_direction(self):
         return randint(0,3)
-    
+
     def peek(self, player, direction):
         space = ord(' ')
         prize_distance = sys.maxint
@@ -221,24 +249,26 @@ class Game(object):
             distance_to_wall = self.width - player.position.x - 1
         else:
             raise ValueError
-        if prize_distance < distance_to_wall:
-            if debug:
-                self.window.addstr(2, 1, "%s" % (str(nearest_prize)))
-            
-            if prize_distance > self.visibility:
-                return (self.visibility, " ")
-            else:
-                return (prize_distance, nearest_prize.get_character())
-        else:
-            if distance_to_wall > self.visibility:
-                return (self.visibility, " ")
-            else:
-                return (distance_to_wall, "|")
+        if prize_distance <= distance_to_wall:
+            if prize_distance <= self.visibility:
+                return nearest_prize
+        if distance_to_wall < self.visibility:
+            wall_pt = player.position.copy()
+            if direction == UP:
+                wall_pt.y -= (distance_to_wall+1)
+            elif direction == DOWN:
+                wall_pt.y += (distance_to_wall+1)
+            elif direction == LEFT:
+                wall_pt.x -= (distance_to_wall+1)
+            elif direction == RIGHT:
+                wall_pt.x += (distance_to_wall+1)
+            return GameObject("wall", wall_pt, NONE, WALL)
+        return None
 
-    def update(self):
+    def update(self, info, force_direction):
         remove_prizes = list()
         for player in self.players:
-            player.move(self)
+            player.move(self, force_direction)
             for prize in self.prizes:
                 if player.position.x == prize.position.x and player.position.y == prize.position.y:
                     player.score += prize.points
@@ -254,56 +284,109 @@ class Game(object):
                 self.window.addch(player.position.y, player.position.x, player_char)
             except:
                 pass # exception will be thrown if you try to addch at y = height -1 and x = width - 1...
-                
+
         for prize in self.prizes:
             self.window.addch(prize.position.y, prize.position.x, prize.get_character())
+        if info:
+            y = 3
+            for player in self.players:
+                self.window.addstr(y, 1, str(player))
+                y+=1
+                game_object = self.peek (player, UP)
+                if game_object:
+                    distance = player.distance_to_game_object_in_direction(game_object, UP)
+                    self.window.addstr(y, 1, "   up: distance = %u, %s" % (distance, str(game_object)))
+                else:
+                    self.window.addstr(y, 1, "   up: <none>")
+                y+=1
+                game_object = self.peek (player, DOWN)
+                if game_object:
+                    distance = player.distance_to_game_object_in_direction(game_object, DOWN)
+                    self.window.addstr(y, 1, " down: distance = %u, %s" % (distance, str(game_object)))
+                else:
+                    self.window.addstr(y, 1, " down: <none>")
+                y+=1
+                game_object = self.peek (player, LEFT)
+                if game_object:
+                    distance = player.distance_to_game_object_in_direction(game_object, LEFT)
+                    self.window.addstr(y, 1, " left: distance = %u, %s" % (distance, str(game_object)))
+                else:
+                    self.window.addstr(y, 1, " left: <none>")
+                y+=1
+                game_object = self.peek (player, RIGHT)
+                if game_object:
+                    distance = player.distance_to_game_object_in_direction(game_object, RIGHT)
+                    self.window.addstr(y, 1, "right: distance = %u, %s" % (distance, str(game_object)))
+                else:
+                    self.window.addstr(y, 1, "right: <none>")
+                y+=1
 
-def main(s):    
+
+
+
+
+def main(s):
 
     (height, width) = s.getmaxyx()
     window = curses.newwin(height, width);
-    
-    window.timeout(50)
+
+    timeout = 50
+    window.timeout(timeout)
 
     game = Game(window, 50)
     game.add_player(dadbot.Bot('@'))
     game.add_player(prestonbot.Bot2('~'))
     window.keypad(1)
-    
-    key = 0
 
+    key = 0
+    info = False
+    pause = False
+    advance_frame = True
+    force_direction = NONE
     while key != 27:                                                   # While Esc key is not pressed
-        window.erase()
-        game.update()
-        if game.finished():
-            break
-        window.move(0,0) # set the cursor to 0,0 since we can't hide the cursor...
-        curses.doupdate()
+        if advance_frame:
+            window.erase()
+            game.update(info, force_direction)
+            force_direction = NONE
+            window.move(0,0) # set the cursor to 0,0 since we can't hide the cursor...
+            winner = game.finished()
+            if winner:
+                window.addstr(3,1, "Player %s wins!!!" % (winner.get_character()))
+                curses.doupdate()
+                window.timeout(2000)
+                window.getch() # Delay for 2 seconds
+                break
+            curses.doupdate()
+        else:
+            advance_frame = True
+
         prevKey = key                                                  # Previous key pressed
         event = window.getch()
-        key = key if event == -1 else event 
+        key = key if event == -1 else event
+        if key == ord('q'):
+            break
+        elif key == ord('i'):
+            advance_frame = False
+            info = not info
+        elif key == ord(' '):
+            if pause:
+                pause = False
+            else:
+                pause = True
+            if pause:
+                advance_frame = False
+                window.timeout(timeout) # Run again
+            else:
+                advance_frame = True
+                window.timeout(-1) # wait for each key to advance a frame
+        elif key == KEY_UP:
+            force_direction = UP
+        elif key == KEY_DOWN:
+            force_direction = DOWN
+        elif key == KEY_LEFT:
+            force_direction = LEFT
+        elif key == KEY_RIGHT:
+            force_direction = RIGHT
 
-    
-        if key == ord(' '):                                            # If SPACE BAR is pressed, wait for another
-            key = -1                                                   # one (Pause/Resume)
-            while key != ord(' '):
-                key = window.getch()
-            key = prevKey
-            continue    
-    
-        # if key == KEY_UP:
-        #     for player in game.players:
-        #         player.direction = UP
-        # elif key == KEY_DOWN:
-        #     for player in game.players:
-        #         player.direction = DOWN
-        # elif key == KEY_LEFT:
-        #     for player in game.players:
-        #         player.direction = LEFT
-        # elif key == KEY_RIGHT:
-        #     for player in game.players:
-        #         player.direction = RIGHT
-        
 if __name__ == '__main__':
     curses.wrapper(main)
-        
