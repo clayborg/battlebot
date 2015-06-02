@@ -15,19 +15,19 @@ class Bot(object):
         game_object       = None
         if game_object_up:
             game_object = game_object_up
-            if game_object_up.type == battlebot.PRIZE:
+            if game_object_up.is_prize():
                 return battlebot.UP
         if game_object_down:
             game_object = game_object_down
-            if game_object_down.type == battlebot.PRIZE:
+            if game_object_down.is_prize():
                 return battlebot.DOWN
         if game_object_right:
             game_object = game_object_right
-            if game_object_right.type == battlebot.PRIZE:
+            if game_object_right.is_prize():
                 return battlebot.RIGHT
         if game_object_left:
             game_object = game_object_left
-            if game_object_left.type == battlebot.PRIZE:
+            if game_object_left.is_prize():
                 return battlebot.LEFT
         if player.will_hit_wall(game_object):
             if player.position.x == 0:
@@ -47,22 +47,18 @@ class Bot2(battlebot.BaseBot):
             self.push_move_target (battlebot.Point(0,game.visibility-1), battlebot.RIGHT)
 
         game_object_up = game.peek (player, battlebot.UP)
-        if game_object_up and game_object_up.type == battlebot.PRIZE:
+        if game_object_up and game_object_up.is_prize():
             move_targets = self.get_move_targets()
-            prize_position = player.position.copy()
-            prize_position.y -= player.distance_to_game_object_in_direction(game_object_up, battlebot.UP)
-            if len(move_targets) == 0 or move_targets[-1].position != prize_position:
+            if len(move_targets) == 0 or move_targets[-1].position != game_object_up.position:
                 self.push_move_target (player.position, player.direction)
-                self.push_move_target (prize_position, battlebot.DOWN)
+                self.push_move_target (game_object_up.position, battlebot.DOWN)
                 return battlebot.UP
         game_object_down  = game.peek (player, battlebot.DOWN)
-        if game_object_down and game_object_down.type == battlebot.PRIZE:
+        if game_object_down and game_object_down.is_prize():
             move_targets = self.get_move_targets()
-            prize_position = player.position.copy()
-            prize_position.y += player.distance_to_game_object_in_direction(game_object_down, battlebot.DOWN)
-            if len(move_targets) == 0 or move_targets[-1].position != prize_position:
+            if len(move_targets) == 0 or move_targets[-1].position != game_object_down.position:
                 self.push_move_target (player.position, player.direction)
-                self.push_move_target (prize_position, battlebot.UP)
+                self.push_move_target (game_object_down.position, battlebot.UP)
                 return battlebot.DOWN
         target_direction = self.move_using_targets(player, game)
         if target_direction != battlebot.NONE:

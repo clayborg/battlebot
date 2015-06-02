@@ -4,8 +4,6 @@ import curses
 import sys
 from curses import KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN
 from random import randint
-import prestonbot
-import dadbot
 debug = 0
 # Define numbers for the directions
 UP      = 0
@@ -71,9 +69,25 @@ class GameObject(object):
         self.name = name
         self.type = type
 
+    def __repr__(self):
+        return "%s%s" % (self.__class__.__name__, str(self))
+
     def __str__(self):
         return "%s: position = %s, direction = %u, type = %s" % (self.name, self.position, self.direction, GameObject.TypeToString(self.type))
 
+    def is_wall(self):
+        return self.type == WALL
+
+    def is_player(self):
+        return self.type == PLAYER
+
+    def is_prize(self):
+        return self.type == PRIZE
+    
+    def is_enemy(self):
+        return self.type == ENEMY
+        
+        
     def distance_to_game_object_in_direction(self, game_object, direction):
         if direction == UP:
             return self.position.y - game_object.position.y
@@ -88,7 +102,7 @@ class GameObject(object):
             return 0
 
     def will_hit_wall(self, game_object):
-        if game_object and game_object.type == WALL and self.distance_to_game_object_in_direction(game_object, self.direction) == 1:
+        if game_object and game_object.is_wall() and self.distance_to_game_object_in_direction(game_object, self.direction) == 1:
             return True
         else:
             return False
@@ -100,6 +114,12 @@ class BaseBot(object):
 
     def push_move_target(self, pt, direction):
         self.targets.append(GameObject("move", pt.copy(), direction, MOVE))
+
+    def has_move_target(self, pt):
+        for target in self.targets:
+            if target.position == pt:
+                return True
+        return False
 
     def get_character(self):
         return self.character
@@ -330,12 +350,12 @@ def main(s):
     (height, width) = s.getmaxyx()
     window = curses.newwin(height, width);
 
-    timeout = 50
+    timeout = 15
     window.timeout(timeout)
 
-    game = Game(window, 50)
+    game = Game(window, 51)
     game.add_player(dadbot.Bot('@'))
-    game.add_player(prestonbot.Bot2('~'))
+    game.add_player(prestonbot.Bot2('#'))
     window.keypad(1)
 
     key = 0
@@ -389,4 +409,6 @@ def main(s):
             force_direction = RIGHT
 
 if __name__ == '__main__':
+    import prestonbot
+    import dadbot
     curses.wrapper(main)
